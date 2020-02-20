@@ -6,7 +6,7 @@ BUILD_DIR   := ./build
 
 CC        := gcc
 CFLAGS    := -Wall
-LDFLAGS   :=
+LDFLAGS   := -lm -lpthread
 INC_FLAGS := -I$(INCLUDE_DIR)
 
 SOURCES = $(wildcard $(SOURCE_DIR)/*.c)
@@ -19,7 +19,7 @@ all: $(BUILD_DIR)/$(TARGET)
 
 
 $(BUILD_DIR)/$(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $@ $(LDFLAGS) -lm -lpthread
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.c
 	$(CC) $(CFLAGS) $(INC_FLAGS) -c $< -o $@
