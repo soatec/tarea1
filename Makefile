@@ -19,7 +19,7 @@ all: $(BUILD_DIR)/$(TARGET)
 
 
 $(BUILD_DIR)/$(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS) -lm -lpthread
 
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.c
 	$(CC) $(CFLAGS) $(INC_FLAGS) -c $< -o $@
