@@ -9,7 +9,7 @@
 
 //••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••GLOBALS
 
-// Argumentos del thread.
+// Thread arguments
 typedef struct threadData{ int threadID; }threadData;
 
 //Bridge crossing directions, none equals no car on bridge
@@ -28,16 +28,16 @@ void *GoingEast(void *arg);
 int main(int argc, char *argv[])
 {
     int opt;
-    int oeste = -1;
-    int este  = -1;
+    int fromWest = -1;
+    int fromEast  = -1;
 
     while ((opt = getopt(argc, argv, "e:o:")) != -1) {
         switch (opt) {
         case 'e':
-          este = atoi(optarg);
+          east = atoi(optarg);
           break;
         case 'o':
-          oeste = atoi(optarg);
+          fromWest = atoi(optarg);
           break;
         default:
             fprintf(stderr, "Uso: %s -e #CarrosDelEste -o #CarrosDelOeste\n", argv[0]);
@@ -45,23 +45,23 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (este == -1) {
+    if (fromEast == -1) {
       fprintf(stderr, "-e #CarrosDelEste es un parámetro obligatorio\n");
       exit(EXIT_FAILURE);
     }
 
-    if (oeste == -1) {
+    if (fromWest == -1) {
       fprintf(stderr, "-o #CarrosDelOeste es un parámetro obligatorio\n");
       exit(EXIT_FAILURE);
     }
 
     fprintf(stdout, "\n****************\n* SOA: TAREA 1 *\n****************\n\n");
-    fprintf(stdout, "Cantidad de carros del este: %u\n", este);
-    fprintf(stdout, "Cantidad de carros del oeste: %u\n", oeste);
+    fprintf(stdout, "Cantidad de carros del este: %u\n", fromEast);
+    fprintf(stdout, "Cantidad de carros del oeste: %u\n", fromWest);
 
-    int totalCars = este+oeste;
-    int remainingGoingEast = oeste;
-    int remainingGoingWest = este;
+    int totalCars = fromEast+fromWest;
+    int remainingGoingEast = fromWest;
+    int remainingGoingWest = fromEast;
 	threadData tData[totalCars];
 	pthread_t thread[totalCars];
 
