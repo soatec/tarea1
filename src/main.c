@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     while ((opt = getopt(argc, argv, "e:o:")) != -1) {
         switch (opt) {
         case 'e':
-          east = atoi(optarg);
+          fromEast = atoi(optarg);
           break;
         case 'o':
           fromWest = atoi(optarg);
