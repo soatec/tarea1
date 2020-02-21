@@ -15,7 +15,7 @@ OBJECTS = $(SOURCES:$(SOURCE_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 
 .PHONY: all
-all: $(BUILD_DIR)/$(TARGET)
+all: $(BUILD_DIR) $(BUILD_DIR)/$(TARGET)
 
 
 $(BUILD_DIR)/$(TARGET): $(OBJECTS)
