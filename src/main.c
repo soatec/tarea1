@@ -17,12 +17,6 @@
 // Thread arguments
 typedef struct threadData{ int threadID; int qty; }threadData;
 
-//Bridge crossing directions, none equals no car on bridge
-enum {None, toEast, toWest} crossingDirection;
-
-sem_t semToEast, semToWest, mutex;
-int crosingCounter, waitingToEastCounter, waitingToWestCounter;
-
 pthread_mutex_t lock;
 pthread_mutex_t screen;
 int Waiting[2];
@@ -32,10 +26,7 @@ int CurrentDirection = -1;
 int fromWest = -1;
 int fromEast  = -1;
 int carsInBridge = 0;
-
 int totalCars = -1;
-int remainingGoingEast = -1;
-int remainingGoingWest = -1;
 
 //••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••FUNCTIONS
 
@@ -80,8 +71,6 @@ int main(int argc, char *argv[])
     fprintf(stdout, "Cantidad de carros del oeste: %u\n", fromWest);
 
     totalCars = fromEast+fromWest;
-    remainingGoingEast = fromWest;
-    remainingGoingWest = fromEast;
 	threadData tData[totalCars];
 	pthread_t thread[totalCars];
 
@@ -123,62 +112,6 @@ int main(int argc, char *argv[])
 
     return EXIT_SUCCESS;
 }
-
-    // for (i=0;i<(totalCars);++i)
-    // {
-	// 	tData[i].threadID = i;
-
-    // 	void *thread_func;
-	// 	//Some chance to create a car GoingWest or GoingEast
-	// 	if (rand()%totalCars <= totalCars/2)
-	// 	{
-	// 		if (remainingGoingEast > 0)
-	// 		{
-	// 			thread_func = GoingEast;
-	// 			remainingGoingEast--;
-	// 		}
-	// 		else
-	// 		{
-	// 			thread_func = GoingWest;
-	// 			remainingGoingWest--;
-	// 		}
-	// 	} 
-	// 	else
-	// 	{
-	// 		if (remainingGoingWest > 0)
-	// 		{
-	// 			thread_func = GoingWest;
-	// 			remainingGoingWest--;
-	// 		}
-	// 		else
-	// 		{
-	// 			thread_func = GoingEast;
-	// 			remainingGoingEast--;
-	// 		}
-	// 	}
-
-	// 	//Create thread
-	// 	if ((errCheck = pthread_create(&thread[i], NULL, thread_func, &tData[i]))) 
-	// 	{
-    //         fprintf(stderr, "error: pthread_create, %d\n", errCheck);
-    //         return EXIT_FAILURE;
-    // 	}
-
-    // 	//Wait before creating next thread
-    // 	sleep(exprand(1));
-    // }
-
-    // //Wait for threads to end
-    // for (int i = 0; i < totalCars; ++i)
-    // {
-    //     if ((errCheck = pthread_join(thread[i], NULL)))
-    //     {
-    //         fprintf(stderr, "error: pthread_join, %d\n", errCheck);
-    //     }
-    // }
-
-    // return EXIT_SUCCESS;
-// }
 
 /*
  * Applies inversion method to turn uniform distribution into exponential distribution.
