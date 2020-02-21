@@ -83,6 +83,9 @@ int main(int argc, char *argv[])
 	threadData tData[totalCars];
 	pthread_t thread[totalCars];
 
+	sem_init(&Semaphore[0], 0, 0);
+	sem_init(&Semaphore[1], 0, 1);
+
 	int errCheck;
     int i;
     for (i=0;i<(totalCars);++i)
@@ -168,7 +171,7 @@ void *GoingWest(void *arg)
 	pthread_mutex_lock(&screen);
 		printf("tID: %i entered bridge GoingWest\n", tID);
 	pthread_mutex_unlock(&screen);
-	pthread_yield();
+	sleep(1);
 	exitBridge(1);
 	pthread_mutex_lock(&screen);
 		printf("tID: %i exited bridge GoingWest\n", tID);
@@ -192,7 +195,7 @@ void *GoingEast(void *arg)
 	pthread_mutex_lock(&screen);
 		printf("tID: %i entered bridge GoingEast\n", tID);
 	pthread_mutex_unlock(&screen);
-	pthread_yield();
+	sleep(1);
 	exitBridge(0);
 	pthread_mutex_lock(&screen);
 		printf("tID: %i exited bridge GoingEast\n", tID);
