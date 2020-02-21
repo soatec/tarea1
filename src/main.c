@@ -6,17 +6,36 @@
 #include <semaphore.h>
 #include <math.h>
 #include <time.h>
+#include <stdbool.h>
 
-//••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••GLOBALS
+//••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••GLOBALS\
+
+#define EAST 	0
+#define WEST	1
 
 // Thread arguments
-typedef struct threadData{ int threadID; }threadData;
+typedef struct threadData{ int threadID; int qty; int direction; }threadData;
+typedef struct carData{ int threadID; int direction; }carData;
 
-//Bridge crossing directions, none equals no car on bridge
-enum {None, toEast, toWest} crossingDirection;
+pthread_mutex_t lock;
+pthread_mutex_t screen;
+int Waiting[2];
+sem_t Semaphore[2];
+int CurrentDirection = -1;
 
-sem_t semToEast, semToWest, mutex;
-int crosingCounter, waitingToEastCounter, waitingToWestCounter;
+int fromWest = -1;
+int fromEast  = -1;
+int carsInBridge = 0;
+int mean = -1;
+
+int totalCars = -1;
+int remainingGoingEast = -1;
+int remainingGoingWest = -1;
+
+threadData tData[2];
+pthread_t creator[2];
+
+int errCheck;
 
 //••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••FUNCTIONS
 
@@ -24,14 +43,15 @@ int crosingCounter, waitingToEastCounter, waitingToWestCounter;
 double exprand(double mean);
 void *GoingWest(void *arg);
 void *GoingEast(void *arg);
+void *createEastCars(void *arg);
+void *createWestCars(void *arg);
+
 
 int main(int argc, char *argv[])
 {
     int opt;
-    int fromWest = -1;
-    int fromEast  = -1;
 
-    while ((opt = getopt(argc, argv, "e:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "e:o:m:")) != -1) {
         switch (opt) {
         case 'e':
           fromEast = atoi(optarg);
@@ -39,8 +59,11 @@ int main(int argc, char *argv[])
         case 'o':
           fromWest = atoi(optarg);
           break;
+        case 'm':
+          mean = atoi(optarg);
+          break;
         default:
-            fprintf(stderr, "Uso: %s -e #CarrosDelEste -o #CarrosDelOeste\n", argv[0]);
+            fprintf(stderr, "Uso: %s -e #CarrosDelEste -o #CarrosDelOeste -m #Media\n", argv[0]);
             exit(EXIT_FAILURE);
         }
     }
@@ -59,69 +82,49 @@ int main(int argc, char *argv[])
     fprintf(stdout, "Cantidad de carros del este: %u\n", fromEast);
     fprintf(stdout, "Cantidad de carros del oeste: %u\n", fromWest);
 
-    int totalCars = fromEast+fromWest;
-    int remainingGoingEast = fromWest;
-    int remainingGoingWest = fromEast;
+    totalCars = fromEast+fromWest;
+    remainingGoingEast = fromWest;
+    remainingGoingWest = fromEast;
 	threadData tData[totalCars];
 	pthread_t thread[totalCars];
 
-	int errCheck;
-    int i;
-    for (i=0;i<(totalCars);++i)
-    {
-		tData[i].threadID = i;
 
-    	void *thread_func;
-		//Some chance to create a car GoingWest or GoingEast
-		if (rand()%totalCars <= totalCars/2)
-		{
-			if (remainingGoingEast > 0)
-			{
-				thread_func = GoingEast;
-				remainingGoingEast--;
-			}
-			else
-			{
-				thread_func = GoingWest;
-				remainingGoingWest--;
-			}
-		} 
-		else
-		{
-			if (remainingGoingWest > 0)
-			{
-				thread_func = GoingWest;
-				remainingGoingWest--;
-			}
-			else
-			{
-				thread_func = GoingEast;
-				remainingGoingEast--;
-			}
-		}
+	
 
-		//Create thread
-		if ((errCheck = pthread_create(&thread[i], NULL, thread_func, &tData[i]))) 
-		{
-            fprintf(stderr, "error: pthread_create, %d\n", errCheck);
-            return EXIT_FAILURE;
-    	}
+	sem_init(&Semaphore[0], 0, 0);
+	sem_init(&Semaphore[1], 0, 1);
 
-    	//Wait before creating next thread
-    	sleep(exprand(1));
-    }
+	tData[0].qty = fromEast;
+	tData[0].direction = 1;
+	tData[1].qty = fromWest;
+	tData[1].direction = 0;
 
-    //Wait for threads to end
-    for (int i = 0; i < totalCars; ++i)
-    {
-        if ((errCheck = pthread_join(thread[i], NULL)))
-        {
-            fprintf(stderr, "error: pthread_join, %d\n", errCheck);
-        }
-    }
+
+	if ((errCheck = pthread_create(&creator[0], NULL, createCars, &cData[0]))) 
+	{
+		fprintf(stderr, "error: pthread_create, %d\n", errCheck);
+		return EXIT_FAILURE;
+	}
+
+	if ((errCheck = pthread_create(&creator[1], NULL, createCars, &cData[1]))) 
+	{
+		fprintf(stderr, "error: pthread_create, %d\n", errCheck);
+		return EXIT_FAILURE;
+	}
+
+	if ((errCheck = pthread_join(creator[0], NULL)))
+	{
+		fprintf(stderr, "error: pthread_join, %d\n", errCheck);
+	}
+
+	if ((errCheck = pthread_join(creator[1], NULL)))
+	{
+		fprintf(stderr, "error: pthread_join, %d\n", errCheck);
+	}
 
     return EXIT_SUCCESS;
 }
+
 
 /*
  * Applies inversion method to turn uniform distribution into exponential distribution.
@@ -135,26 +138,91 @@ double exprand(double mean)
 	return -log(1-uniform) * mean;	//Inversion method
 }
 
-/*
- * Cars that will do checks going West
-*/
-void *GoingWest(void *arg)
-{
-	threadData *data = (threadData *)arg;
+void *Going(void *arg){
+	carData *data = (threadData *)arg;
 
 	int tID = data->threadID;
-	printf("tID: %i GoingWest\n", tID);
+	int dir = data->direction;
+
+	pthread_mutex_lock(&screen);
+		printf("tID: %i arrived at bridge %i\n", tID, dir);
+	pthread_mutex_unlock(&screen);
+	enterBridge(0, tID);
+	pthread_mutex_lock(&screen);
+		printf("tID: %i entered bridge %i\n", tID, dir);
+	pthread_mutex_unlock(&screen);
+	sleep(1);
+	exitBridge(0);
+	pthread_mutex_lock(&screen);
+		printf("tID: %i exited bridge %i\n", tID, dir);
+	pthread_mutex_unlock(&screen);
 	pthread_exit(NULL);
 }
 
-/*
- * Cars that will do checks going East
-*/
-void *GoingEast(void *arg)
-{
-	threadData *data = (threadData *)arg;
+int canCross(int Direction){
+	if(carsInBridge == 0)
+		return TRUE;
+	else if(CurrentDirection == Direction)
+		return TRUE;
+	else
+		return FALSE;
+}
 
-	int tID = data->threadID;
-	printf("tID: %i GoingEast\n", tID);
-	pthread_exit(NULL);
+void enterBridge(int Direction, int tID){
+	pthread_mutex_lock(&lock);
+		if(!canCross(Direction)){
+			Waiting[Direction]++;
+			pthread_mutex_lock(&screen);
+				printf("tID: %i waiting\n", tID);
+			pthread_mutex_unlock(&screen);
+			sem_wait(&Semaphore[Direction]);
+			Waiting[Direction]--;
+		}
+		carsInBridge++;
+		CurrentDirection = Direction;
+	pthread_mutex_unlock(&lock);
+}
+
+void exitBridge(int Direction){
+	pthread_mutex_lock(&lock);
+		carsInBridge--;
+		if(carsInBridge>0)
+			sem_post(&Semaphore[Direction]);
+		else{
+			if( Waiting[1-Direction] != 0 ){
+				sem_post(&Semaphore[1-Direction]);
+			}
+			else{
+				sem_post(&Semaphore[Direction]);
+			}
+		}
+	pthread_mutex_unlock(&lock);
+}
+
+void *createCars(void *arg){
+	threadData *data =  (threadData *)arg;
+	int qty = data->qty;
+	int dir = data->direction;
+	int errCheck;
+
+	pthread_t thread[qty];
+	carData cData[qty];
+
+	for(int i=0;i<qty;i++){
+		cData[i].threadID = i;
+		cData[i].direction = dir;
+		if(errCheck = pthread_create(&thread[i], NULL, Going, &cData[i])){
+			fprintf(stderr, "error: pthread_create, %d\n", errCheck);
+            return EXIT_FAILURE;
+		}
+		sleep(exprand(mean));
+	}
+
+	for (int i = 0; i < qty; i++)
+    {
+        if ((errCheck = pthread_join(thread[i], NULL)))
+        {
+            fprintf(stderr, "error: pthread_join, %d\n", errCheck);
+        }
+    }
 }
