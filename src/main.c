@@ -15,7 +15,7 @@
 #define WEST	1
 
 // Thread arguments
-typedef struct threadData{ int threadID; }threadData;
+typedef struct threadData{ int threadID; int qty; }threadData;
 
 //Bridge crossing directions, none equals no car on bridge
 enum {None, toEast, toWest} crossingDirection;
@@ -43,6 +43,8 @@ int remainingGoingWest = -1;
 double exprand(double mean);
 void *GoingWest(void *arg);
 void *GoingEast(void *arg);
+void *createEastCars(void *arg);
+void *createWestCars(void *arg);
 
 
 int main(int argc, char *argv[])
@@ -83,66 +85,100 @@ int main(int argc, char *argv[])
 	threadData tData[totalCars];
 	pthread_t thread[totalCars];
 
+
+	threadData cData[2];
+	pthread_t creator[2];
+
 	sem_init(&Semaphore[0], 0, 0);
 	sem_init(&Semaphore[1], 0, 1);
 
 	int errCheck;
     int i;
-    for (i=0;i<(totalCars);++i)
-    {
-		tData[i].threadID = i;
 
-    	void *thread_func;
-		//Some chance to create a car GoingWest or GoingEast
-		if (rand()%totalCars <= totalCars/2)
-		{
-			if (remainingGoingEast > 0)
-			{
-				thread_func = GoingEast;
-				remainingGoingEast--;
-			}
-			else
-			{
-				thread_func = GoingWest;
-				remainingGoingWest--;
-			}
-		} 
-		else
-		{
-			if (remainingGoingWest > 0)
-			{
-				thread_func = GoingWest;
-				remainingGoingWest--;
-			}
-			else
-			{
-				thread_func = GoingEast;
-				remainingGoingEast--;
-			}
-		}
+	cData[0].qty = fromEast;
+	cData[1].qty = fromWest;
 
-		//Create thread
-		if ((errCheck = pthread_create(&thread[i], NULL, thread_func, &tData[i]))) 
-		{
-            fprintf(stderr, "error: pthread_create, %d\n", errCheck);
-            return EXIT_FAILURE;
-    	}
 
-    	//Wait before creating next thread
-    	sleep(exprand(1));
-    }
+	if ((errCheck = pthread_create(&creator[0], NULL, createEastCars, &cData[0]))) 
+	{
+		fprintf(stderr, "error: pthread_create, %d\n", errCheck);
+		return EXIT_FAILURE;
+	}
 
-    //Wait for threads to end
-    for (int i = 0; i < totalCars; ++i)
-    {
-        if ((errCheck = pthread_join(thread[i], NULL)))
-        {
-            fprintf(stderr, "error: pthread_join, %d\n", errCheck);
-        }
-    }
+	if ((errCheck = pthread_create(&creator[1], NULL, createWestCars, &cData[1]))) 
+	{
+		fprintf(stderr, "error: pthread_create, %d\n", errCheck);
+		return EXIT_FAILURE;
+	}
+
+	if ((errCheck = pthread_join(creator[0], NULL)))
+	{
+		fprintf(stderr, "error: pthread_join, %d\n", errCheck);
+	}
+
+	if ((errCheck = pthread_join(creator[1], NULL)))
+	{
+		fprintf(stderr, "error: pthread_join, %d\n", errCheck);
+	}
 
     return EXIT_SUCCESS;
 }
+
+    // for (i=0;i<(totalCars);++i)
+    // {
+	// 	tData[i].threadID = i;
+
+    // 	void *thread_func;
+	// 	//Some chance to create a car GoingWest or GoingEast
+	// 	if (rand()%totalCars <= totalCars/2)
+	// 	{
+	// 		if (remainingGoingEast > 0)
+	// 		{
+	// 			thread_func = GoingEast;
+	// 			remainingGoingEast--;
+	// 		}
+	// 		else
+	// 		{
+	// 			thread_func = GoingWest;
+	// 			remainingGoingWest--;
+	// 		}
+	// 	} 
+	// 	else
+	// 	{
+	// 		if (remainingGoingWest > 0)
+	// 		{
+	// 			thread_func = GoingWest;
+	// 			remainingGoingWest--;
+	// 		}
+	// 		else
+	// 		{
+	// 			thread_func = GoingEast;
+	// 			remainingGoingEast--;
+	// 		}
+	// 	}
+
+	// 	//Create thread
+	// 	if ((errCheck = pthread_create(&thread[i], NULL, thread_func, &tData[i]))) 
+	// 	{
+    //         fprintf(stderr, "error: pthread_create, %d\n", errCheck);
+    //         return EXIT_FAILURE;
+    // 	}
+
+    // 	//Wait before creating next thread
+    // 	sleep(exprand(1));
+    // }
+
+    // //Wait for threads to end
+    // for (int i = 0; i < totalCars; ++i)
+    // {
+    //     if ((errCheck = pthread_join(thread[i], NULL)))
+    //     {
+    //         fprintf(stderr, "error: pthread_join, %d\n", errCheck);
+    //     }
+    // }
+
+    // return EXIT_SUCCESS;
+// }
 
 /*
  * Applies inversion method to turn uniform distribution into exponential distribution.
@@ -241,4 +277,54 @@ void exitBridge(int Direction){
 			}
 		}
 	pthread_mutex_unlock(&lock);
+}
+
+void *createEastCars(void *arg){
+	threadData *data =  (threadData *)arg;
+	int qty = data->qty;
+	int errCheck;
+	pthread_t thread[qty];
+	threadData cData[qty];
+	for(int i=0;i<qty;i++){
+		cData[i].threadID = i;
+		if(errCheck = pthread_create(&thread[i], NULL, GoingWest, &cData[i])){
+			fprintf(stderr, "error: pthread_create, %d\n", errCheck);
+            return EXIT_FAILURE;
+		}
+		sleep(exprand(1));
+	}
+	
+	for (int i = 0; i < qty; ++i)
+    {
+        if ((errCheck = pthread_join(thread[i], NULL)))
+        {
+            fprintf(stderr, "error: pthread_join, %d\n", errCheck);
+        }
+    }
+}
+
+void *createWestCars(void *arg){
+	threadData *data =  (threadData *)arg;
+	int qty = data->qty;
+	int errCheck;
+
+	printf("%i\n", qty);
+	pthread_t thread[qty];
+	threadData cData[qty];
+	for(int i=0;i<qty;i++){
+		cData[i].threadID = i;
+		if(errCheck = pthread_create(&thread[i], NULL, GoingEast, &cData[i])){
+			fprintf(stderr, "error: pthread_create, %d\n", errCheck);
+            return EXIT_FAILURE;
+		}
+		sleep(exprand(1));
+	}
+
+	for (int i = 0; i < qty; i++)
+    {
+        if ((errCheck = pthread_join(thread[i], NULL)))
+        {
+            fprintf(stderr, "error: pthread_join, %d\n", errCheck);
+        }
+    }
 }
