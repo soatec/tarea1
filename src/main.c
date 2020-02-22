@@ -11,8 +11,8 @@
 
 #define FALSE 	0
 #define TRUE 	1
-#define EAST 	0
-#define WEST	1
+#define TO_EAST 0
+#define TO_WEST 1
 
 // Thread arguments
 typedef struct threadData{ int threadID; int qty; }threadData;
@@ -99,13 +99,13 @@ int main(int argc, char *argv[])
 	cData[1].qty = fromWest;
 
 
-	if ((errCheck = pthread_create(&creator[0], NULL, createEastCars, &cData[0]))) 
+	if ((errCheck = pthread_create(&creator[0], NULL, createEastCars, &cData[0])))
 	{
 		fprintf(stderr, "error: pthread_create, %d\n", errCheck);
 		return EXIT_FAILURE;
 	}
 
-	if ((errCheck = pthread_create(&creator[1], NULL, createWestCars, &cData[1]))) 
+	if ((errCheck = pthread_create(&creator[1], NULL, createWestCars, &cData[1])))
 	{
 		fprintf(stderr, "error: pthread_create, %d\n", errCheck);
 		return EXIT_FAILURE;
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 	// 			thread_func = GoingWest;
 	// 			remainingGoingWest--;
 	// 		}
-	// 	} 
+	// 	}
 	// 	else
 	// 	{
 	// 		if (remainingGoingWest > 0)
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 	// 	}
 
 	// 	//Create thread
-	// 	if ((errCheck = pthread_create(&thread[i], NULL, thread_func, &tData[i]))) 
+	// 	if ((errCheck = pthread_create(&thread[i], NULL, thread_func, &tData[i])))
 	// 	{
     //         fprintf(stderr, "error: pthread_create, %d\n", errCheck);
     //         return EXIT_FAILURE;
@@ -201,16 +201,16 @@ void *GoingWest(void *arg)
 
 	int tID = data->threadID;
 	pthread_mutex_lock(&screen);
-		printf("tID: %i arrived at bridge GoingWest\n", tID);
+		printf("East Car: %i arrived at bridge GoingWest\n", tID);
 	pthread_mutex_unlock(&screen);
-	enterBridge(1, tID);
+	enterBridge(TO_WEST, tID);
 	pthread_mutex_lock(&screen);
-		printf("tID: %i entered bridge GoingWest\n", tID);
+		printf("East Car: %i entered bridge GoingWest\n", tID);
 	pthread_mutex_unlock(&screen);
 	sleep(1);
-	exitBridge(1);
+	exitBridge(TO_WEST);
 	pthread_mutex_lock(&screen);
-		printf("tID: %i exited bridge GoingWest\n", tID);
+		printf("East Car: %i exited bridge GoingWest\n", tID);
 	pthread_mutex_unlock(&screen);
 	pthread_exit(NULL);
 }
@@ -225,36 +225,46 @@ void *GoingEast(void *arg)
 	int tID = data->threadID;
 
 	pthread_mutex_lock(&screen);
-		printf("tID: %i arrived at bridge GoingEast\n", tID);
+		printf("West car: %i arrived at bridge GoingEast\n", tID);
 	pthread_mutex_unlock(&screen);
-	enterBridge(0, tID);
+	enterBridge(TO_EAST, tID);
 	pthread_mutex_lock(&screen);
-		printf("tID: %i entered bridge GoingEast\n", tID);
+		printf("West car: %i entered bridge GoingEast\n", tID);
 	pthread_mutex_unlock(&screen);
 	sleep(1);
-	exitBridge(0);
+	exitBridge(TO_EAST);
 	pthread_mutex_lock(&screen);
-		printf("tID: %i exited bridge GoingEast\n", tID);
+		printf("West car: %i exited bridge GoingEast\n", tID);
 	pthread_mutex_unlock(&screen);
 	pthread_exit(NULL);
 }
 
 int canCross(int Direction){
-	if(carsInBridge == 0)
+	if(carsInBridge == 0){
+    printf("Bridge empty ....\n");
 		return TRUE;
-	else if(CurrentDirection == Direction)
+  }
+	else if(CurrentDirection == Direction){
+      printf("Same direction ....\n");
 		return TRUE;
-	else
+  }
+	else{
+    printf("cant cross ....\n");
 		return FALSE;
+  }
 }
 
 void enterBridge(int Direction, int tID){
 	pthread_mutex_lock(&lock);
 		if(!canCross(Direction)){
 			Waiting[Direction]++;
-			pthread_mutex_lock(&screen);
-				printf("tID: %i waiting\n", tID);
-			pthread_mutex_unlock(&screen);
+			//pthread_mutex_lock(&screen);
+        if (Direction == TO_WEST){
+          printf("East car: %i is waiting ....\n\n", tID);
+        }else{
+          printf("West car: %i is waiting ....\n\n", tID);
+        }
+			//pthread_mutex_unlock(&screen);
 			sem_wait(&Semaphore[Direction]);
 			Waiting[Direction]--;
 		}
@@ -293,7 +303,7 @@ void *createEastCars(void *arg){
 		}
 		sleep(exprand(1));
 	}
-	
+
 	for (int i = 0; i < qty; ++i)
     {
         if ((errCheck = pthread_join(thread[i], NULL)))
