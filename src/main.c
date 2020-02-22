@@ -15,7 +15,7 @@
 #define TO_WEST 1
 
 // Thread arguments
-typedef struct threadData{ int threadID; int qty; }threadData;
+typedef struct threadData{ int threadID; int qty;}threadData;
 
 //Bridge crossing directions, none equals no car on bridge
 enum {None, toEast, toWest} crossingDirection;
@@ -36,7 +36,8 @@ int carsInBridge = 0;
 int totalCars = -1;
 int remainingGoingEast = -1;
 int remainingGoingWest = -1;
-
+int mediaWest = 0;
+int mediaEast = 0;
 //••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••FUNCTIONS
 
 //Implicit declarations
@@ -82,6 +83,10 @@ int main(int argc, char *argv[])
     totalCars = fromEast+fromWest;
     remainingGoingEast = fromWest;
     remainingGoingWest = fromEast;
+
+    mediaEast = 5;
+    mediaWest = 10;
+
 	threadData tData[totalCars];
 	pthread_t thread[totalCars];
 
@@ -91,8 +96,6 @@ int main(int argc, char *argv[])
 
 	sem_init(&Semaphore[0], 0, 0);
 	sem_init(&Semaphore[1], 0, 1);
-  sem_init(&semToEast, 0, 0);
-  sem_init(&semToWest, 0, 1);
 
 	int errCheck;
     int i;
@@ -126,62 +129,6 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-    // for (i=0;i<(totalCars);++i)
-    // {
-	// 	tData[i].threadID = i;
-
-    // 	void *thread_func;
-	// 	//Some chance to create a car GoingWest or GoingEast
-	// 	if (rand()%totalCars <= totalCars/2)
-	// 	{
-	// 		if (remainingGoingEast > 0)
-	// 		{
-	// 			thread_func = GoingEast;
-	// 			remainingGoingEast--;
-	// 		}
-	// 		else
-	// 		{
-	// 			thread_func = GoingWest;
-	// 			remainingGoingWest--;
-	// 		}
-	// 	}
-	// 	else
-	// 	{
-	// 		if (remainingGoingWest > 0)
-	// 		{
-	// 			thread_func = GoingWest;
-	// 			remainingGoingWest--;
-	// 		}
-	// 		else
-	// 		{
-	// 			thread_func = GoingEast;
-	// 			remainingGoingEast--;
-	// 		}
-	// 	}
-
-	// 	//Create thread
-	// 	if ((errCheck = pthread_create(&thread[i], NULL, thread_func, &tData[i])))
-	// 	{
-    //         fprintf(stderr, "error: pthread_create, %d\n", errCheck);
-    //         return EXIT_FAILURE;
-    // 	}
-
-    // 	//Wait before creating next thread
-    // 	sleep(exprand(1));
-    // }
-
-    // //Wait for threads to end
-    // for (int i = 0; i < totalCars; ++i)
-    // {
-    //     if ((errCheck = pthread_join(thread[i], NULL)))
-    //     {
-    //         fprintf(stderr, "error: pthread_join, %d\n", errCheck);
-    //     }
-    // }
-
-    // return EXIT_SUCCESS;
-// }
-
 /*
  * Applies inversion method to turn uniform distribution into exponential distribution.
  * Random uniform number will be between ]0,1[
@@ -202,6 +149,7 @@ void *GoingWest(void *arg)
 	threadData *data = (threadData *)arg;
 
 	int tID = data->threadID;
+  beforeEnterBridge(TO_WEST,tID);
 	//pthread_mutex_lock(&screen);
 		printf("\n\nTO_WEST: %i arrived at bridge GoingWest\n", tID);
 	//pthread_mutex_unlock(&screen);
@@ -211,9 +159,9 @@ void *GoingWest(void *arg)
 	//pthread_mutex_unlock(&screen);
 	sleep(1);
 	exitBridge(TO_WEST);
-	//pthread_mutex_lock(&screen);
+	pthread_mutex_lock(&screen);
 		printf(".... TO_WEST: %i exited bridge GoingWest\n\n", tID);
-	//pthread_mutex_unlock(&screen);
+	pthread_mutex_unlock(&screen);
 	pthread_exit(NULL);
 }
 
@@ -225,9 +173,9 @@ void *GoingEast(void *arg)
 	threadData *data = (threadData *)arg;
 
 	int tID = data->threadID;
-
+  beforeEnterBridge(TO_EAST,tID);
 	//pthread_mutex_lock(&screen);
-		printf("\n\nTO_EAST: %i arrived at bridge GoingEast\n", tID);
+		printf("TO_EAST: %i arrived at bridge GoingEast\n\n", tID);
 	//pthread_mutex_unlock(&screen);
 	enterBridge(TO_EAST, tID);
 	//pthread_mutex_lock(&screen);
@@ -235,10 +183,27 @@ void *GoingEast(void *arg)
 	//pthread_mutex_unlock(&screen);
 	sleep(1);
 	exitBridge(TO_EAST);
-	//pthread_mutex_lock(&screen);
+	pthread_mutex_lock(&screen);
 		printf(".... TO_EAST: %i exited bridge GoingEast\n\n", tID);
 	pthread_mutex_unlock(&screen);
 	pthread_exit(NULL);
+}
+
+void beforeEnterBridge(int Direction, int tID)
+{
+   int km_before_bridge = 4;
+   for (int km = km_before_bridge; km > 0; --km  ){
+     pthread_mutex_lock(&screen);
+     printf("\033[0;33m");
+     if (Direction == TO_WEST){
+       printf("                                               New car TO_WEST: %i is %ikm before bridge \n", tID ,km);
+     }else{
+        printf("                                              New car TO_EAST: %i is %ikm before bridge \n", tID ,km);
+     }
+    printf("\033[0m");
+     sleep(1);
+     pthread_mutex_unlock(&screen);
+   }
 }
 
 int canCross(int Direction){
@@ -273,11 +238,13 @@ void enterBridge(int Direction, int tID){
 		}
   		carsInBridge++;
       CurrentDirection = Direction;
+      printf("\033[1;31m");
       if (Direction == TO_WEST){
-        printf("Car is comming into the bridge . BRIDGE Total  cars %i TO_WEST \n", carsInBridge);
+        printf("Car is comming into the bridge . BRIDGE Total cars %i TO_WEST \n", carsInBridge);
       }else{
-        printf("Car is comming into the bridge . BRIDGE Total  cars %i TO_EAST\n", carsInBridge);
+        printf("Car is comming into the bridge . BRIDGE Total cars %i TO_EAST\n", carsInBridge);
       }
+      printf("\033[0m");
 
 
 	//pthread_mutex_unlock(&lock);
@@ -290,11 +257,13 @@ void exitBridge(int Direction){
       //sem_post(&Semaphore[Direction]);
       carsInBridge--;
       sem_post(&sem);
+      printf("\033[1;31m");
       if (Direction == TO_WEST){
         printf("Car leaving the bridge. BRIDGE Total cars %i TO_WEST\n", carsInBridge);
       }else{
         printf("Car leaving the bridge. BRIDGE Total cars %i TO_EAST\n", carsInBridge);
       }
+      printf("\033[0m");
     }
 		else{
       printf("BRIDGE Empty\n");
@@ -321,7 +290,7 @@ void *createEastCars(void *arg){
 			fprintf(stderr, "error: pthread_create, %d\n", errCheck);
             return (void *)EXIT_FAILURE;
 		}
-		sleep(exprand(1));
+		sleep(exprand(mediaEast));
 	}
 
 	for (int i = 0; i < qty; ++i)
@@ -347,7 +316,7 @@ void *createWestCars(void *arg){
 			fprintf(stderr, "error: pthread_create, %d\n", errCheck);
             return (void *)EXIT_FAILURE;
 		}
-		sleep(exprand(1));
+		sleep(exprand(mediaWest));
 	}
 
 	for (int i = 0; i < qty; i++)
