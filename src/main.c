@@ -5,6 +5,7 @@
 #include <semaphore.h>
 #include <math.h>
 #include <time.h>
+#include "interface.h"
 
 // Preprocessor macros
 
@@ -211,6 +212,8 @@ void* create_cars_going_west_to_east(void *arg){
 
 int main(int argc, char *argv[])
 {
+  animation();
+  /*
   int error_check;
   int opt;
   int from_west_to_east = -1;
@@ -276,4 +279,5 @@ int main(int argc, char *argv[])
   }
 
   return EXIT_SUCCESS;
+  */
 }
