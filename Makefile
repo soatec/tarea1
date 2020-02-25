@@ -6,7 +6,7 @@ BUILD_DIR   := ./build
 
 CC        := gcc
 CFLAGS    := -Wall
-LDFLAGS   := -lm -lpthread
+LDFLAGS   := -lm -lpthread -lncurses
 INC_FLAGS := -I$(INCLUDE_DIR)
 
 SOURCES = $(wildcard $(SOURCE_DIR)/*.c)
